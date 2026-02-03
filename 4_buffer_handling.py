@@ -1,25 +1,22 @@
 from ryu.base import app_manager
 from ryu.controller import ofp_event
-from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
+from ryu.controller.handler import MAIN_DISPATCHER, CONFIG_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 
 
-class MyFirstRyuApp(app_manager.RyuApp):
+class L2Switch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(MyFirstRyuApp, self).__init__(*args, **kwargs)
-        print("----Ryu app started----")
+        super(L2Switch, self).__init__(*args, **kwargs)
 
     # Flow Miss Handler
-    # Switch connected -> table-miss
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connected(self, ev):
         print("----Switch connected----")
 
-        msg = ev.msg
-        datapath = msg.datapath          # datapath represents the connected switch
+        datapath = ev.msg.datapath          # datapath represents the connected switch
         ofproto = datapath.ofproto          # Shortcut to OpenFlow constants
         parser = datapath.ofproto_parser    # OpenFlow message factory, used to construct Matches, Actions, Instructions, FlowMod Messages
 
@@ -38,8 +35,32 @@ class MyFirstRyuApp(app_manager.RyuApp):
 
         datapath.send_msg(mod)              # Sends FlowMod msg to the switch; Switch installs the table-miss rule
         # Now: Any unmatched packet → Packet-In → controller
-    
-    # Detect/Handle Packet-In Messages
+
+    # BUFFER HANDLING
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
-        print("----Packet-In received at controller----")
+        msg = ev.msg
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        in_port = msg.match['in_port']      # The input port for the packet
+
+        actions = [
+            parser.OFPActionOutput(ofproto.OFPP_FLOOD)      # Flood packet to all ports except the input one
+        ]
+
+        # BUFFER HANDLING: 
+        data = None
+        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+            data = msg.data
+
+        out = parser.OFPPacketOut(
+            datapath=datapath,
+            buffer_id=msg.buffer_id,
+            in_port=in_port,            # Prevents sending packet back to same port
+            actions=actions,
+            data=data
+        )
+
+        datapath.send_msg(out)
