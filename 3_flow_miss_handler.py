@@ -14,6 +14,8 @@ class MyFirstRyuApp(app_manager.RyuApp):
 
     # Flow Miss Handler
     # Switch connected -> table-miss
+    # This runs once per switch to install a 'policy' that says "If you dont know what to do with the packet, send it to the controller."
+    # Then next time if the policy for a packet doesnt exist in the switch, it sends the packet to the controller and this triggers events.
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connected(self, ev):
         print("----Switch connected----")
