@@ -35,7 +35,7 @@ class MyRyuApp(app_manager.RyuApp):
         parser = datapath.ofproto_parser
 
         # Static Blocking
-        blocked_mac = "da:46:9d:38:38:2a"
+        blocked_mac = "16:33:94:1e:eb:da"
         block_match = parser.OFPMatch(eth_src=blocked_mac)
         block_inst = []                                     # No actions = DROP
         block_flow = parser.OFPFlowMod(datapath=datapath,
@@ -59,7 +59,7 @@ class MyRyuApp(app_manager.RyuApp):
                                 instructions=miss_inst)
         datapath.send_msg(miss_flow)
 
-    # BUFFER HANDLING
+    # Packet-In Handling + Buffer Handling
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
         msg = ev.msg
