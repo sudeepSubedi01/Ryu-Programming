@@ -6,6 +6,8 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib import hub
 import os
 import socket
+import struct
+from ryu.lib.packet import packet, ethernet, ipv4, tcp
 
 class SnortSdnController(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -31,8 +33,33 @@ class SnortSdnController(app_manager.RyuApp):
         while True:
             data = sock.recv(65535)
             if data:
-                self.logger.info("!!! IDS ALERT RECEIVED FROM SNORT !!!")
+                print("----------------------------------------------------------------------")
+                self.logger.info("!!!!!!!!!!!! IDS ALERT RECEIVED FROM SNORT !!!!!!!!!!!!")
                 self.logger.info(f"Alert Data Size: {len(data)} bytes")
+
+                alert_msg = data[:256]
+                alert_msg = alert_msg.split(b'\x00', 1)[0]   # Remove null padding
+                alert_msg = alert_msg.decode(errors='ignore')
+
+                event_id = struct.unpack('I', data[256:260])[0]
+                priority = struct.unpack('I', data[264:268])[0]
+
+                raw_packet = data[284:]
+                pkt = packet.Packet(raw_packet)
+                eth = pkt.get_protocol(ethernet.ethernet)
+                ip  = pkt.get_protocol(ipv4.ipv4)
+                tcp_pkt = pkt.get_protocol(tcp.tcp)
+
+                if eth:
+                    print(f"Ethernet Header: {eth.src} -> {eth.dst}")
+
+                if ip:
+                    print(f"Ethernet Header: {ip.src} -> {ip.dst}")
+
+                self.logger.info(f"alertmsg: {alert_msg}")
+                self.logger.info(f"val: {event_id}")
+                self.logger.info(f"priority: {priority}")
+                print("----------------------------------------------------------------------")
 
     # --- PART 2: Table Flow-Miss Handler---
 

@@ -36,3 +36,15 @@ class SnortManualIntegration(app_manager.RyuApp):
             if data:
                 self.logger.info("!!! ALERT RECEIVED FROM SNORT !!!")       # Just saying that the alert was received
                 self.logger.info(f"Raw Data Length: {len(data)} bytes")
+
+                alert_msg = data[:256]
+                alert_msg = alert_msg.split(b'\x00', 1)[0]   # Remove null padding
+                alert_msg = alert_msg.decode(errors='ignore')
+
+                priority = struct.unpack('I', data[256:260])[0]
+
+                # ---- Print structured alert ----
+                self.logger.info("=================================")
+                self.logger.info(f"ATTACK DETECTED: {alert_msg}")
+                self.logger.info(f"Priority Level: {priority}")
+                self.logger.info("=================================")
